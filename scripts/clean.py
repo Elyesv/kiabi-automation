@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import ONEDRIVE_BASE_PATH, FILE_CONFIGS
+from config import ONEDRIVE_BASE_PATH, FILE_CONFIGS, CRM_CONFIG
 
 
 def main():
@@ -16,7 +16,8 @@ def main():
         print(f"ERREUR: Chemin OneDrive invalide: {ONEDRIVE_BASE_PATH}")
         return
 
-    for name, config in FILE_CONFIGS.items():
+    all_configs = {**FILE_CONFIGS, **CRM_CONFIG}
+    for name, config in all_configs.items():
         folder = ONEDRIVE_BASE_PATH / config["folder"]
         prefix = config["file_prefix"]
         ext = config.get("file_ext", ".xlsx")

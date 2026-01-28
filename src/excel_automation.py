@@ -292,6 +292,62 @@ class ExcelAutomation:
             print(f"Erreur vérification connexions: {e}")
             return False
 
+    def get_query_formula(self, query_name: str) -> Optional[str]:
+        """
+        Lit la formule M d'une requête Power Query.
+
+        Args:
+            query_name: Nom de la requête
+
+        Returns:
+            Formule M ou None si non trouvée
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return None
+
+        try:
+            for query in self.workbook.Queries:
+                if query.Name.lower() == query_name.lower():
+                    formula = query.Formula
+                    print(f"Requête '{query_name}' trouvée")
+                    return formula
+            print(f"ERREUR: Requête '{query_name}' non trouvée")
+            print("  Requêtes disponibles:")
+            for query in self.workbook.Queries:
+                print(f"    - {query.Name}")
+            return None
+        except Exception as e:
+            print(f"Erreur lecture requête '{query_name}': {e}")
+            return None
+
+    def set_query_formula(self, query_name: str, formula: str) -> bool:
+        """
+        Met à jour la formule M d'une requête Power Query.
+
+        Args:
+            query_name: Nom de la requête
+            formula: Nouvelle formule M
+
+        Returns:
+            True si la mise à jour est réussie
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return False
+
+        try:
+            for query in self.workbook.Queries:
+                if query.Name.lower() == query_name.lower():
+                    query.Formula = formula
+                    print(f"Requête '{query_name}' mise à jour")
+                    return True
+            print(f"ERREUR: Requête '{query_name}' non trouvée")
+            return False
+        except Exception as e:
+            print(f"Erreur mise à jour requête '{query_name}': {e}")
+            return False
+
     def get_sheet_names(self) -> List[str]:
         """
         Retourne la liste des noms de feuilles du classeur.
