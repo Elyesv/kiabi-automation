@@ -1,0 +1,25 @@
+# Credentials
+.env
+
+# Fichiers temporaires
+temp/
+*.tmp
+
+# Logs
+logs/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
