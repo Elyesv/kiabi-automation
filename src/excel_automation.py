@@ -89,23 +89,39 @@ class ExcelAutomation:
 
         try:
             print("Configuration des niveaux de confidentialité...")
-            count = 0
 
-            # Définir FastCombine sur chaque requête
+            # Méthode 1: Exécuter une macro VBA pour ignorer les niveaux de confidentialité
+            try:
+                vba_code = '''
+Sub IgnorePrivacyLevels()
+    On Error Resume Next
+    ActiveWorkbook.Queries.FastCombine = True
+End Sub
+'''
+                # Ajouter un module VBA temporaire
+                vb_component = self.workbook.VBProject.VBComponents.Add(1)  # 1 = vbext_ct_StdModule
+                vb_component.CodeModule.AddFromString(vba_code)
+                self.excel.Run("IgnorePrivacyLevels")
+                # Supprimer le module temporaire
+                self.workbook.VBProject.VBComponents.Remove(vb_component)
+                print("  Niveaux de confidentialité ignorés (via VBA)")
+                return True
+            except Exception as e:
+                print(f"  Note: Méthode VBA non disponible ({e})")
+
+            # Méthode 2: Définir FastCombine sur chaque requête individuellement
+            count = 0
             try:
                 for query in self.workbook.Queries:
                     try:
-                        # FastCombine = True ignore les contrôles de confidentialité
                         query.FastCombine = True
                         count += 1
                     except:
                         pass
                 if count > 0:
                     print(f"  FastCombine activé sur {count} requête(s)")
-                else:
-                    print("  Aucune requête Power Query trouvée")
             except Exception as e:
-                print(f"  Note: Impossible de configurer FastCombine ({e})")
+                print(f"  Note: FastCombine non disponible ({e})")
 
             return True
 
