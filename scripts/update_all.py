@@ -11,6 +11,7 @@ Pour chaque fichier :
 4. Sauvegarde et ferme
 """
 import sys
+import re
 import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -22,30 +23,42 @@ from config import ONEDRIVE_BASE_PATH, FILE_CONFIGS
 from src.excel_automation import ExcelAutomation
 
 
-def get_week_numbers():
-    """Calcule le numéro de semaine courante (ISO) et le précédent."""
-    today = datetime.now()
-    current_week = today.isocalendar()[1]
-    previous_week = (today - timedelta(weeks=1)).isocalendar()[1]
-    return previous_week, current_week
+def find_latest_file(folder: Path, prefix: str, ext: str = ".xlsx"):
+    """
+    Trouve le fichier avec le numéro de semaine le plus élevé dans le dossier.
 
-
-def find_source_file(folder: Path, prefix: str, week_num: int, ext: str = ".xlsx") -> Path:
-    """Trouve le fichier source de la semaine précédente."""
-    pattern = f"{prefix}_S{week_num:02d}*{ext}"
+    Returns:
+        Tuple (Path du fichier, numéro de semaine) ou (None, None)
+    """
+    pattern = f"{prefix}_S*{ext}"
     matches = list(folder.glob(pattern))
 
     if not matches:
         print(f"  ERREUR: Aucun fichier trouvé pour '{pattern}' dans {folder}")
+        return None, None
+
+    # Extraire le numéro de semaine de chaque fichier et prendre le plus élevé
+    best_file = None
+    best_week = -1
+    for f in matches:
+        match = re.search(rf'{re.escape(prefix)}_S(\d+)', f.stem)
+        if match:
+            week = int(match.group(1))
+            if week > best_week:
+                best_week = week
+                best_file = f
+
+    if best_file is None:
+        print(f"  ERREUR: Aucun fichier avec un numéro de semaine valide trouvé")
         print("  Fichiers disponibles:")
-        for f in sorted(folder.glob(f"{prefix}*")):
+        for f in sorted(matches):
             print(f"    - {f.name}")
-        return None
+        return None, None
 
-    return max(matches, key=lambda f: f.stat().st_mtime)
+    return best_file, best_week
 
 
-def process_file(name: str, config: dict, prev_week: int, curr_week: int) -> bool:
+def process_file(name: str, config: dict) -> bool:
     """
     Traite un fichier : duplication, mise à jour date, actualisation données.
 
@@ -65,15 +78,16 @@ def process_file(name: str, config: dict, prev_week: int, curr_week: int) -> boo
         print(f"  ERREUR: Dossier introuvable: {folder}")
         return False
 
-    # 1. Trouver le fichier source
-    print(f"\n  [1/5] Recherche de {prefix}_S{prev_week:02d}{ext}...")
-    source_file = find_source_file(folder, prefix, prev_week, ext)
+    # 1. Trouver le fichier avec le numéro de semaine le plus élevé
+    print(f"\n  [1/5] Recherche du dernier fichier {prefix}_SXX{ext}...")
+    source_file, source_week = find_latest_file(folder, prefix, ext)
     if not source_file:
         return False
-    print(f"  Trouvé: {source_file.name}")
+    next_week = source_week + 1
+    print(f"  Trouvé: {source_file.name} (S{source_week:02d} -> S{next_week:02d})")
 
     # 2. Dupliquer et renommer
-    new_name = f"{prefix}_S{curr_week:02d}{ext}"
+    new_name = f"{prefix}_S{next_week:02d}{ext}"
     new_file = folder / new_name
     print(f"\n  [2/5] Duplication: {source_file.name} -> {new_name}")
 
@@ -160,14 +174,11 @@ def main():
         print("Configurez ONEDRIVE_BASE_PATH dans le fichier .env")
         return False
 
-    prev_week, curr_week = get_week_numbers()
-    print(f"\nSemaine précédente: S{prev_week:02d}")
-    print(f"Semaine courante:   S{curr_week:02d}")
-    print(f"Fichiers à traiter: {len(FILE_CONFIGS)}")
+    print(f"\nFichiers à traiter: {len(FILE_CONFIGS)}")
 
     results = {}
     for name, config in FILE_CONFIGS.items():
-        results[name] = process_file(name, config, prev_week, curr_week)
+        results[name] = process_file(name, config)
 
     # Résumé
     print("\n" + "=" * 60)
