@@ -30,15 +30,15 @@ def get_week_numbers():
     return previous_week, current_week
 
 
-def find_source_file(folder: Path, prefix: str, week_num: int) -> Path:
+def find_source_file(folder: Path, prefix: str, week_num: int, ext: str = ".xlsx") -> Path:
     """Trouve le fichier source de la semaine précédente."""
-    pattern = f"{prefix}_S{week_num:02d}*.xlsx"
+    pattern = f"{prefix}_S{week_num:02d}*{ext}"
     matches = list(folder.glob(pattern))
 
     if not matches:
         print(f"  ERREUR: Aucun fichier trouvé pour '{pattern}' dans {folder}")
         print("  Fichiers disponibles:")
-        for f in sorted(folder.glob(f"{prefix}*.xlsx")):
+        for f in sorted(folder.glob(f"{prefix}*")):
             print(f"    - {f.name}")
         return None
 
@@ -58,6 +58,7 @@ def process_file(name: str, config: dict, prev_week: int, curr_week: int) -> boo
 
     folder = ONEDRIVE_BASE_PATH / config["folder"]
     prefix = config["file_prefix"]
+    ext = config.get("file_ext", ".xlsx")
 
     # Vérifier que le dossier existe
     if not folder.exists():
@@ -65,14 +66,14 @@ def process_file(name: str, config: dict, prev_week: int, curr_week: int) -> boo
         return False
 
     # 1. Trouver le fichier source
-    print(f"\n  [1/5] Recherche de {prefix}_S{prev_week:02d}...")
-    source_file = find_source_file(folder, prefix, prev_week)
+    print(f"\n  [1/5] Recherche de {prefix}_S{prev_week:02d}{ext}...")
+    source_file = find_source_file(folder, prefix, prev_week, ext)
     if not source_file:
         return False
     print(f"  Trouvé: {source_file.name}")
 
     # 2. Dupliquer et renommer
-    new_name = f"{prefix}_S{curr_week:02d}.xlsx"
+    new_name = f"{prefix}_S{curr_week:02d}{ext}"
     new_file = folder / new_name
     print(f"\n  [2/5] Duplication: {source_file.name} -> {new_name}")
 

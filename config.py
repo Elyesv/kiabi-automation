@@ -38,6 +38,7 @@ SUIVI_MDR_CONFIG = {
 SUIVI_PMA_CONFIG = {
     "folder": "SUIVI_PMA",
     "file_prefix": "SUIVI_PMA",
+    "file_ext": ".xlsm",
     "date_sheet": "REPORT_MONDE",
     "date_cell": "A1",
     "timeout_refresh": 300,
@@ -46,6 +47,7 @@ SUIVI_PMA_CONFIG = {
 SUIVI_PRODUIT_CONFIG = {
     "folder": "SUIVI_PRODUIT",
     "file_prefix": "SUIVI_PRODUIT",
+    "file_ext": ".xlsm",
     "date_sheet": "REPORT_MONDE",
     "date_cell": "A1",
     "timeout_refresh": 300,
