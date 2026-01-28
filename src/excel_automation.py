@@ -78,10 +78,14 @@ class ExcelAutomation:
             print("Activation des connexions de données...")
             count = 0
             for connection in self.workbook.Connections:
+                name = connection.Name
                 try:
                     # Activer la connexion OLEDB si présente
                     if connection.OLEDBConnection:
                         connection.OLEDBConnection.EnableRefresh = True
+                        # Désactiver le background refresh pour forcer le refresh synchrone
+                        connection.OLEDBConnection.BackgroundQuery = False
+                        print(f"  Activée: {name}")
                         count += 1
                 except:
                     pass
@@ -89,10 +93,12 @@ class ExcelAutomation:
                     # Activer la connexion ODBC si présente
                     if connection.ODBCConnection:
                         connection.ODBCConnection.EnableRefresh = True
+                        connection.ODBCConnection.BackgroundQuery = False
+                        print(f"  Activée: {name}")
                         count += 1
                 except:
                     pass
-            print(f"  {count} connexion(s) activée(s)")
+            print(f"  Total: {count} connexion(s) activée(s)")
             return True
         except Exception as e:
             print(f"Erreur lors de l'activation des connexions: {e}")
@@ -116,9 +122,20 @@ class ExcelAutomation:
             # D'abord activer toutes les connexions
             self.enable_all_connections()
 
-            print("Actualisation des requêtes Power Query...")
+            print("Actualisation des connexions une par une...")
 
-            # Actualiser toutes les connexions
+            # Actualiser chaque connexion individuellement
+            for connection in self.workbook.Connections:
+                name = connection.Name
+                try:
+                    print(f"  Actualisation de '{name}'...")
+                    connection.Refresh()
+                    print(f"    OK")
+                except Exception as e:
+                    print(f"    Erreur: {e}")
+
+            # Puis faire un RefreshAll pour s'assurer que tout est à jour
+            print("Actualisation globale (RefreshAll)...")
             self.workbook.RefreshAll()
 
             # Attendre que toutes les requêtes soient terminées

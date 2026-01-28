@@ -73,7 +73,19 @@ SUIVI_CRM_CONFIG = {
     },
 }
 
-# Fichiers avec mise à jour date + refresh (lancés par update_all.py)
+# Fichier KPIS seul (lancé par update_kpis.py)
+KPIS_CONFIG = {
+    "SUIVI_KPIS": SUIVI_KPIS_CONFIG,
+}
+
+# Fichiers MDR, PMA, PRODUIT (lancés par update_autres.py)
+AUTRES_CONFIGS = {
+    "SUIVI_MDR": SUIVI_MDR_CONFIG,
+    "SUIVI_PMA": SUIVI_PMA_CONFIG,
+    "SUIVI_PRODUIT": SUIVI_PRODUIT_CONFIG,
+}
+
+# Tous les fichiers (pour clean.py)
 FILE_CONFIGS = {
     "SUIVI_KPIS": SUIVI_KPIS_CONFIG,
     "SUIVI_MDR": SUIVI_MDR_CONFIG,

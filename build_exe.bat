@@ -15,7 +15,8 @@ REM Creer l'executable
 echo.
 echo Creation de l'executable...
 pyinstaller --onedir --name "Automatisation_SUIVI" --console ^
-    --hidden-import=scripts.update_all ^
+    --hidden-import=scripts.update_kpis ^
+    --hidden-import=scripts.update_autres ^
     --hidden-import=scripts.update_crm ^
     --hidden-import=scripts.update_trafic ^
     --hidden-import=scripts.clean ^
