@@ -229,6 +229,16 @@ class ExcelAutomation:
             self.workbook.RefreshAll()
             time.sleep(5)
 
+            # Forcer le recalcul de toutes les formules
+            print("Recalcul des formules...")
+            try:
+                self.excel.CalculateFull()
+            except:
+                try:
+                    self.workbook.Application.CalculateFull()
+                except:
+                    pass
+
             print("Actualisation terminée")
             return True
 
