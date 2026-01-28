@@ -89,41 +89,23 @@ class ExcelAutomation:
 
         try:
             print("Configuration des niveaux de confidentialité...")
+            count = 0
 
-            # Méthode 1: Définir FastCombine sur chaque requête
+            # Définir FastCombine sur chaque requête
             try:
                 for query in self.workbook.Queries:
                     try:
                         # FastCombine = True ignore les contrôles de confidentialité
                         query.FastCombine = True
+                        count += 1
                     except:
                         pass
-                print("  FastCombine activé sur les requêtes")
+                if count > 0:
+                    print(f"  FastCombine activé sur {count} requête(s)")
+                else:
+                    print("  Aucune requête Power Query trouvée")
             except Exception as e:
-                print(f"  Note: FastCombine non disponible ({e})")
-
-            # Méthode 2: Via les paramètres du modèle de données
-            try:
-                if self.workbook.Model:
-                    # Essayer d'accéder aux paramètres de confidentialité du modèle
-                    pass
-            except:
-                pass
-
-            # Méthode 3: Via le registre Windows (temporaire pour cette session)
-            try:
-                import winreg
-                key_path = r"SOFTWARE\Microsoft\Office\16.0\Excel\Security"
-                try:
-                    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
-                    # PrivacyLevel: 1 = Ignore, 2 = Combine selon le niveau le plus restrictif
-                    winreg.SetValueEx(key, "PrivacyLevel", 0, winreg.REG_DWORD, 1)
-                    winreg.CloseKey(key)
-                    print("  Paramètre de confidentialité Excel configuré")
-                except:
-                    pass
-            except:
-                pass
+                print(f"  Note: Impossible de configurer FastCombine ({e})")
 
             return True
 
