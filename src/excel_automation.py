@@ -34,21 +34,28 @@ class ExcelAutomation:
         self.excel = win32com.client.Dispatch("Excel.Application")
         self.excel.Visible = visible
         self.excel.DisplayAlerts = False
+        self.excel.AskToUpdateLinks = False  # Désactive la pop-up des liaisons externes
         self.workbook = None
         self._pythoncom = pythoncom
 
-    def open_workbook(self, file_path: Path) -> bool:
+    def open_workbook(self, file_path: Path, update_links: bool = True) -> bool:
         """
         Ouvre un classeur Excel.
 
         Args:
             file_path: Chemin du fichier Excel
+            update_links: Si True, met à jour les liaisons automatiquement sans pop-up
 
         Returns:
             True si l'ouverture est réussie
         """
         try:
-            self.workbook = self.excel.Workbooks.Open(str(file_path.absolute()))
+            # UpdateLinks: 0 = ne pas mettre à jour, 3 = mettre à jour sans demander
+            update_links_value = 3 if update_links else 0
+            self.workbook = self.excel.Workbooks.Open(
+                str(file_path.absolute()),
+                UpdateLinks=update_links_value
+            )
             print(f"Classeur ouvert: {file_path.name}")
             return True
         except Exception as e:
@@ -197,6 +204,93 @@ class ExcelAutomation:
 
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def read_cell(self, sheet_name: str, cell: str):
+        """
+        Lit la valeur d'une cellule.
+
+        Args:
+            sheet_name: Nom de la feuille
+            cell: Référence de la cellule (ex: "A1")
+
+        Returns:
+            Valeur de la cellule
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return None
+
+        try:
+            sheet = self.workbook.Sheets(sheet_name)
+            value = sheet.Range(cell).Value
+            print(f"Lecture {sheet_name}!{cell}: {value}")
+            return value
+        except Exception as e:
+            print(f"Erreur lecture {sheet_name}!{cell}: {e}")
+            return None
+
+    def write_cell(self, sheet_name: str, cell: str, value) -> bool:
+        """
+        Écrit une valeur dans une cellule.
+
+        Args:
+            sheet_name: Nom de la feuille
+            cell: Référence de la cellule (ex: "A1")
+            value: Valeur à écrire
+
+        Returns:
+            True si l'écriture est réussie
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return False
+
+        try:
+            sheet = self.workbook.Sheets(sheet_name)
+            sheet.Range(cell).Value = value
+            print(f"Écriture {sheet_name}!{cell}: {value}")
+            return True
+        except Exception as e:
+            print(f"Erreur écriture {sheet_name}!{cell}: {e}")
+            return False
+
+    def check_connections_status(self) -> bool:
+        """
+        Vérifie l'état de toutes les connexions du classeur.
+
+        Returns:
+            True si toutes les connexions sont OK
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return False
+
+        try:
+            all_ok = True
+            for connection in self.workbook.Connections:
+                try:
+                    name = connection.Name
+                    refreshing = False
+                    try:
+                        refreshing = connection.OLEDBConnection.Refreshing
+                    except:
+                        pass
+                    status = "En cours" if refreshing else "OK"
+                    if refreshing:
+                        all_ok = False
+                    print(f"  Connexion '{name}': {status}")
+                except Exception as e:
+                    print(f"  Connexion erreur: {e}")
+                    all_ok = False
+
+            if all_ok:
+                print("Toutes les connexions sont OK")
+            else:
+                print("ATTENTION: Certaines connexions sont encore en cours")
+            return all_ok
+        except Exception as e:
+            print(f"Erreur vérification connexions: {e}")
+            return False
 
     def get_sheet_names(self) -> List[str]:
         """

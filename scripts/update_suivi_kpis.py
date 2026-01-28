@@ -2,37 +2,28 @@
 Script d'automatisation de la mise à jour du fichier SUIVI_KPIS.
 
 Ce script :
-1. Télécharge le fichier SUIVI_KPIS depuis SharePoint
-2. Ouvre le fichier dans Excel
-3. Actualise toutes les requêtes Power Query
-4. Vérifie la présence des données de la veille
-5. Met à jour les liaisons externes si nécessaire
-6. Sauvegarde et uploade le fichier vers SharePoint
+1. Calcule la semaine courante et la semaine précédente
+2. Duplique le fichier SUIVI_KPIS de la semaine précédente
+3. Met à jour la date dans REPORT_HEBDO (A1 + 7 jours)
+4. Actualise toutes les connexions de données
+5. Vérifie que les connexions sont OK
+6. Sauvegarde et ferme le fichier
 """
 import sys
+import shutil
+import glob
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import (
-    SHAREPOINT_SITE_URL,
-    SHAREPOINT_EMAIL,
-    SHAREPOINT_PASSWORD,
-    SHAREPOINT_DOC_LIBRARY,
+    ONEDRIVE_BASE_PATH,
     SUIVI_KPIS_CONFIG,
-    TEMP_DIR,
     LOGS_DIR,
 )
-from src.sharepoint_client import SharePointClient
 from src.excel_automation import ExcelAutomation
-
-
-def setup_logging():
-    """Configure le logging dans un fichier."""
-    log_file = LOGS_DIR / f"suivi_kpis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    return log_file
 
 
 def print_header():
@@ -44,22 +35,56 @@ def print_header():
     print()
 
 
+def get_week_numbers():
+    """
+    Calcule le numéro de semaine courante (ISO) et le précédent.
+
+    Returns:
+        Tuple (semaine_precedente, semaine_courante)
+    """
+    today = datetime.now()
+    current_week = today.isocalendar()[1]
+    previous_week = (today - timedelta(weeks=1)).isocalendar()[1]
+    return previous_week, current_week
+
+
+def find_source_file(folder: Path, prefix: str, week_num: int) -> Path:
+    """
+    Trouve le fichier source de la semaine précédente.
+
+    Args:
+        folder: Dossier contenant les fichiers
+        prefix: Préfixe du fichier (ex: "SUIVI_KPIS")
+        week_num: Numéro de semaine à chercher
+
+    Returns:
+        Path du fichier trouvé ou None
+    """
+    pattern = f"{prefix}_S{week_num:02d}*.xlsx"
+    matches = list(folder.glob(pattern))
+
+    if not matches:
+        print(f"ERREUR: Aucun fichier trouvé pour le pattern '{pattern}' dans {folder}")
+        print("\nFichiers disponibles:")
+        for f in sorted(folder.glob(f"{prefix}*.xlsx")):
+            print(f"  - {f.name}")
+        return None
+
+    # Prendre le plus récent si plusieurs correspondances
+    source = max(matches, key=lambda f: f.stat().st_mtime)
+    return source
+
+
 def validate_config():
     """Valide la configuration."""
-    errors = []
+    if not ONEDRIVE_BASE_PATH or not ONEDRIVE_BASE_PATH.exists():
+        print(f"ERREUR: Le chemin OneDrive n'existe pas: {ONEDRIVE_BASE_PATH}")
+        print("Veuillez configurer ONEDRIVE_BASE_PATH dans le fichier .env")
+        return False
 
-    if not SHAREPOINT_EMAIL:
-        errors.append("SHAREPOINT_EMAIL non configuré dans .env")
-    if not SHAREPOINT_PASSWORD:
-        errors.append("SHAREPOINT_PASSWORD non configuré dans .env")
-    if not SHAREPOINT_SITE_URL:
-        errors.append("SHAREPOINT_SITE_URL non configuré dans .env")
-
-    if errors:
-        print("ERREURS DE CONFIGURATION:")
-        for error in errors:
-            print(f"  - {error}")
-        print("\nVeuillez configurer le fichier .env (voir .env.example)")
+    folder = ONEDRIVE_BASE_PATH / SUIVI_KPIS_CONFIG["folder"]
+    if not folder.exists():
+        print(f"ERREUR: Le dossier SUIVI_KPI n'existe pas: {folder}")
         return False
 
     return True
@@ -73,104 +98,100 @@ def main():
     if not validate_config():
         return False
 
+    config = SUIVI_KPIS_CONFIG
+    folder = ONEDRIVE_BASE_PATH / config["folder"]
+    prefix = config["file_prefix"]
+
+    # Étape 1: Calculer les semaines
+    prev_week, curr_week = get_week_numbers()
+    print(f"[1/6] Calcul des semaines...")
+    print(f"  Semaine précédente: S{prev_week:02d}")
+    print(f"  Semaine courante:   S{curr_week:02d}")
+
+    # Étape 2: Trouver le fichier source
+    print(f"\n[2/6] Recherche du fichier source...")
+    source_file = find_source_file(folder, prefix, prev_week)
+    if not source_file:
+        return False
+    print(f"  Fichier trouvé: {source_file.name}")
+
+    # Étape 3: Dupliquer et renommer
+    new_name = f"{prefix}_S{curr_week:02d}.xlsx"
+    new_file = folder / new_name
+    print(f"\n[3/6] Duplication du fichier...")
+    print(f"  {source_file.name} -> {new_name}")
+
+    if new_file.exists():
+        print(f"  ATTENTION: {new_name} existe déjà, il sera écrasé")
+
+    shutil.copy2(source_file, new_file)
+    print(f"  Fichier créé: {new_file}")
+
+    # Étape 4: Ouvrir dans Excel et mettre à jour la date
     excel = None
     success = False
 
     try:
-        # Étape 1: Connexion à SharePoint
-        print("[1/7] Connexion à SharePoint...")
-        sp_client = SharePointClient(
-            SHAREPOINT_SITE_URL,
-            SHAREPOINT_EMAIL,
-            SHAREPOINT_PASSWORD
-        )
-
-        if not sp_client.test_connection():
-            print("ERREUR: Impossible de se connecter à SharePoint")
-            return False
-
-        # Étape 2: Recherche du fichier SUIVI_KPIS
-        print(f"\n[2/7] Recherche du fichier {SUIVI_KPIS_CONFIG['file_pattern']}...")
-        file_info = sp_client.find_file(
-            SUIVI_KPIS_CONFIG["sharepoint_folder"],
-            SUIVI_KPIS_CONFIG["file_pattern"],
-            SHAREPOINT_DOC_LIBRARY
-        )
-
-        if not file_info:
-            print(f"ERREUR: Fichier non trouvé dans {SUIVI_KPIS_CONFIG['sharepoint_folder']}")
-            print("\nFichiers disponibles dans ce dossier:")
-            files = sp_client.list_files(
-                SUIVI_KPIS_CONFIG["sharepoint_folder"],
-                SHAREPOINT_DOC_LIBRARY
-            )
-            for f in files:
-                print(f"  - {f['name']}")
-            return False
-
-        print(f"  Fichier trouvé: {file_info['name']}")
-
-        # Étape 3: Téléchargement du fichier
-        print(f"\n[3/7] Téléchargement du fichier...")
-        local_file = TEMP_DIR / file_info["name"]
-        remote_path = f"{SUIVI_KPIS_CONFIG['sharepoint_folder']}/{file_info['name']}"
-
-        if not sp_client.download_file(remote_path, local_file, SHAREPOINT_DOC_LIBRARY):
-            print("ERREUR: Impossible de télécharger le fichier")
-            return False
-
-        # Étape 4: Ouverture dans Excel
-        print(f"\n[4/7] Ouverture du fichier dans Excel...")
+        print(f"\n[4/6] Ouverture dans Excel et mise à jour de la date...")
         excel = ExcelAutomation(visible=True)
 
-        if not excel.open_workbook(local_file):
+        if not excel.open_workbook(new_file):
             print("ERREUR: Impossible d'ouvrir le fichier Excel")
             return False
 
-        print(f"  Feuilles disponibles: {', '.join(excel.get_sheet_names())}")
+        print(f"  Feuilles: {', '.join(excel.get_sheet_names())}")
 
-        # Étape 5: Actualisation des requêtes Power Query
-        print(f"\n[5/7] Actualisation des requêtes Power Query...")
-        if not excel.refresh_all_queries(timeout=SUIVI_KPIS_CONFIG["timeout_refresh"]):
+        # Lire la date actuelle en A1 de REPORT_HEBDO
+        sheet = config["date_sheet"]
+        cell = config["date_cell"]
+        current_date = excel.read_cell(sheet, cell)
+
+        if current_date is None:
+            print(f"ERREUR: Impossible de lire la date dans {sheet}!{cell}")
+            return False
+
+        # Calculer la nouvelle date (+7 jours)
+        if isinstance(current_date, datetime):
+            new_date = current_date + timedelta(days=7)
+        else:
+            print(f"ATTENTION: La valeur en {cell} n'est pas une date: {current_date}")
+            print("  Tentative de conversion...")
+            try:
+                current_date = datetime.strptime(str(current_date), "%Y-%m-%d %H:%M:%S")
+                new_date = current_date + timedelta(days=7)
+            except ValueError:
+                print(f"ERREUR: Impossible de convertir '{current_date}' en date")
+                return False
+
+        print(f"  Date actuelle: {current_date.strftime('%d/%m/%Y')}")
+        print(f"  Nouvelle date: {new_date.strftime('%d/%m/%Y')}")
+
+        if not excel.write_cell(sheet, cell, new_date):
+            print("ERREUR: Impossible d'écrire la nouvelle date")
+            return False
+
+        # Étape 5: Actualiser toutes les connexions
+        print(f"\n[5/6] Actualisation des données (Données -> Actualiser tout)...")
+        if not excel.refresh_all_queries(timeout=config["timeout_refresh"]):
             print("ATTENTION: L'actualisation peut ne pas être complète")
 
-        # Étape 6: Vérification des données
-        print(f"\n[6/7] Vérification des données...")
+        # Vérifier l'état des connexions
+        print("\n  Vérification des connexions (Requêtes et Connexions)...")
+        excel.check_connections_status()
 
-        # Mise à jour des liaisons externes
-        excel.update_external_links()
-
-        # Vérification de l'onglet SUIVI_JOUR
-        verification_sheet = SUIVI_KPIS_CONFIG.get("verification_sheet")
-        if verification_sheet and verification_sheet in excel.get_sheet_names():
-            check_result = excel.check_sheet_data(verification_sheet, check_yesterday=True)
-            if not check_result.get("yesterday_data", True):
-                print(f"\n  ATTENTION: Les données de la veille ne semblent pas présentes")
-                print("  Veuillez vérifier manuellement l'onglet SUIVI_JOUR")
-
-        # Sauvegarde
-        print("\n  Sauvegarde du fichier...")
+        # Étape 6: Sauvegarder et fermer
+        print(f"\n[6/6] Sauvegarde et fermeture...")
         if not excel.save():
-            print("ERREUR: Impossible de sauvegarder le fichier")
+            print("ERREUR: Impossible de sauvegarder")
             return False
 
-        # Fermeture d'Excel
         excel.close(save=False)  # Déjà sauvegardé
-
-        # Étape 7: Upload vers SharePoint
-        print(f"\n[7/7] Upload vers SharePoint...")
-        if not sp_client.upload_file(
-            local_file,
-            SUIVI_KPIS_CONFIG["sharepoint_folder"],
-            file_info["name"],
-            SHAREPOINT_DOC_LIBRARY
-        ):
-            print("ERREUR: Impossible d'uploader le fichier")
-            return False
-
         success = True
+
         print("\n" + "=" * 60)
         print("   MISE A JOUR TERMINEE AVEC SUCCES")
+        print(f"   Fichier: {new_name}")
+        print(f"   Date mise à jour: {new_date.strftime('%d/%m/%Y')}")
         print("=" * 60)
 
     except Exception as e:
@@ -179,7 +200,6 @@ def main():
         traceback.print_exc()
 
     finally:
-        # Nettoyage
         if excel:
             try:
                 excel.quit()
