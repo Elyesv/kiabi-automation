@@ -62,6 +62,42 @@ class ExcelAutomation:
             print(f"Erreur d'ouverture du classeur: {e}")
             return False
 
+    def enable_all_connections(self) -> bool:
+        """
+        Active toutes les connexions de données du classeur.
+        Nécessaire car Excel désactive les connexions externes par sécurité.
+
+        Returns:
+            True si l'activation est réussie
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return False
+
+        try:
+            print("Activation des connexions de données...")
+            count = 0
+            for connection in self.workbook.Connections:
+                try:
+                    # Activer la connexion OLEDB si présente
+                    if connection.OLEDBConnection:
+                        connection.OLEDBConnection.EnableRefresh = True
+                        count += 1
+                except:
+                    pass
+                try:
+                    # Activer la connexion ODBC si présente
+                    if connection.ODBCConnection:
+                        connection.ODBCConnection.EnableRefresh = True
+                        count += 1
+                except:
+                    pass
+            print(f"  {count} connexion(s) activée(s)")
+            return True
+        except Exception as e:
+            print(f"Erreur lors de l'activation des connexions: {e}")
+            return False
+
     def refresh_all_queries(self, timeout: int = 300) -> bool:
         """
         Actualise toutes les requêtes Power Query du classeur.
@@ -77,6 +113,9 @@ class ExcelAutomation:
             return False
 
         try:
+            # D'abord activer toutes les connexions
+            self.enable_all_connections()
+
             print("Actualisation des requêtes Power Query...")
 
             # Actualiser toutes les connexions
