@@ -149,6 +149,47 @@ class ExcelAutomation:
             print(f"Erreur lors de la mise à jour des liaisons: {e}")
             return False
 
+    def change_link_path(self, old_path: str, new_path: str) -> bool:
+        """
+        Change le chemin d'une liaison externe.
+
+        Args:
+            old_path: Ancien chemin complet du fichier lié
+            new_path: Nouveau chemin complet
+
+        Returns:
+            True si le changement est réussi
+        """
+        if not self.workbook:
+            print("Aucun classeur ouvert")
+            return False
+
+        try:
+            self.workbook.ChangeLink(old_path, new_path, 1)  # 1 = xlExcelLinks
+            print(f"  Liaison modifiée: {old_path} -> {new_path}")
+            return True
+        except Exception as e:
+            print(f"  Erreur modification liaison: {e}")
+            return False
+
+    def get_external_links(self) -> list:
+        """
+        Retourne la liste des liaisons externes du classeur.
+
+        Returns:
+            Liste des chemins des fichiers liés
+        """
+        if not self.workbook:
+            return []
+
+        try:
+            links = self.workbook.LinkSources(1)  # 1 = xlExcelLinks
+            if links:
+                return list(links)
+            return []
+        except:
+            return []
+
     def check_sheet_data(
         self,
         sheet_name: str,

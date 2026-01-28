@@ -76,7 +76,25 @@ FILE_CONFIGS = {
     "SUIVI_PRODUIT": SUIVI_PRODUIT_CONFIG,
 }
 
+SUIVI_TRAFIC_CONFIG = {
+    "folder": "SUIVI_TRAFIC",
+    "file_prefix": "SUIVI_TRAFIC",
+    "timeout_refresh": 300,
+    # Liaisons externes à mettre à jour (vers CRM et KPIS)
+    "linked_files": ["SUIVI_CRM", "SUIVI_KPIS"],
+    # Requêtes Power Query piano
+    "queries": {
+        "piano_all": {"type": "piano"},
+        "piano_all_histo": {"type": "piano"},
+    },
+}
+
 # Fichier CRM (lancé par update_crm.py)
 CRM_CONFIG = {
     "SUIVI_CRM": SUIVI_CRM_CONFIG,
+}
+
+# Fichier TRAFIC (lancé par update_trafic.py)
+TRAFIC_CONFIG = {
+    "SUIVI_TRAFIC": SUIVI_TRAFIC_CONFIG,
 }

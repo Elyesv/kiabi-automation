@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import ONEDRIVE_BASE_PATH, FILE_CONFIGS, CRM_CONFIG
+from config import ONEDRIVE_BASE_PATH, FILE_CONFIGS, CRM_CONFIG, TRAFIC_CONFIG
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
         print(f"ERREUR: Chemin OneDrive invalide: {ONEDRIVE_BASE_PATH}")
         return
 
-    all_configs = {**FILE_CONFIGS, **CRM_CONFIG}
+    all_configs = {**FILE_CONFIGS, **CRM_CONFIG, **TRAFIC_CONFIG}
     for name, config in all_configs.items():
         folder = ONEDRIVE_BASE_PATH / config["folder"]
         prefix = config["file_prefix"]
