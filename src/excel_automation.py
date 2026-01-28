@@ -78,56 +78,24 @@ class ExcelAutomation:
     def ignore_privacy_levels(self) -> bool:
         """
         Ignore les contrôles de niveaux de confidentialité Power Query.
-        Permet de combiner des données de sources différentes sans popup.
+        Note: La configuration doit être faite manuellement sur le fichier source
+        via Données → Obtenir des données → Paramètres de la source de données.
 
         Returns:
-            True si l'opération est réussie
+            True (toujours, car on ne peut pas forcer ce paramètre via COM)
         """
         if not self.workbook:
-            print("Aucun classeur ouvert")
             return False
 
-        try:
-            print("Configuration des niveaux de confidentialité...")
+        # Note: Les niveaux de confidentialité Power Query ne peuvent pas être
+        # modifiés de manière fiable via COM automation.
+        # Le paramètre doit être configuré manuellement sur le fichier source :
+        # 1. Données → Obtenir des données → Paramètres de la source de données
+        # 2. Pour chaque source → Modifier les autorisations → Public/Organisationnel
+        # 3. Sauvegarder le fichier
+        # Ce paramètre sera ensuite hérité par les fichiers dupliqués.
 
-            # Méthode 1: Exécuter une macro VBA pour ignorer les niveaux de confidentialité
-            try:
-                vba_code = '''
-Sub IgnorePrivacyLevels()
-    On Error Resume Next
-    ActiveWorkbook.Queries.FastCombine = True
-End Sub
-'''
-                # Ajouter un module VBA temporaire
-                vb_component = self.workbook.VBProject.VBComponents.Add(1)  # 1 = vbext_ct_StdModule
-                vb_component.CodeModule.AddFromString(vba_code)
-                self.excel.Run("IgnorePrivacyLevels")
-                # Supprimer le module temporaire
-                self.workbook.VBProject.VBComponents.Remove(vb_component)
-                print("  Niveaux de confidentialité ignorés (via VBA)")
-                return True
-            except Exception as e:
-                print(f"  Note: Méthode VBA non disponible ({e})")
-
-            # Méthode 2: Définir FastCombine sur chaque requête individuellement
-            count = 0
-            try:
-                for query in self.workbook.Queries:
-                    try:
-                        query.FastCombine = True
-                        count += 1
-                    except:
-                        pass
-                if count > 0:
-                    print(f"  FastCombine activé sur {count} requête(s)")
-            except Exception as e:
-                print(f"  Note: FastCombine non disponible ({e})")
-
-            return True
-
-        except Exception as e:
-            print(f"Erreur configuration confidentialité: {e}")
-            return False
+        return True
 
     def enable_all_connections(self) -> bool:
         """
