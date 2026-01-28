@@ -1,6 +1,6 @@
 """
 Lanceur principal pour l'automatisation des fichiers SUIVI.
-Demande le chemin OneDrive au premier lancement, puis propose un menu.
+Demande le chemin OneDrive au premier lancement, puis lance toutes les mises à jour.
 """
 import os
 import sys
@@ -15,17 +15,18 @@ else:
 CONFIG_FILE = BASE_DIR / "config_path.txt"
 
 
-def get_onedrive_path():
+def get_onedrive_path(force_ask=False):
     """Récupère ou demande le chemin OneDrive."""
     # Vérifier si déjà configuré
-    if CONFIG_FILE.exists():
+    if not force_ask and CONFIG_FILE.exists():
         path = CONFIG_FILE.read_text().strip()
         if path and Path(path).exists():
             return path
 
     # Demander le chemin
+    print()
     print("=" * 60)
-    print("   CONFIGURATION INITIALE")
+    print("   CONFIGURATION DU CHEMIN ONEDRIVE")
     print("=" * 60)
     print()
     print("Entrez le chemin du dossier OneDrive contenant les fichiers SUIVI.")
@@ -42,103 +43,80 @@ def get_onedrive_path():
             print(f"ERREUR: Le dossier '{path}' n'existe pas. Réessayez.")
 
 
-def show_menu():
-    """Affiche le menu principal."""
-    print()
-    print("=" * 60)
-    print("   AUTOMATISATION FICHIERS SUIVI - MENU")
-    print("=" * 60)
-    print()
-    print("  1. Mettre à jour KPIS, MDR, PMA, PRODUIT (les 4)")
-    print("  2. Mettre à jour CRM")
-    print("  3. Mettre à jour TRAFIC")
-    print("  4. Tout mettre à jour (1 + 2 + 3 dans l'ordre)")
-    print()
-    print("  5. Nettoyer (supprimer derniers fichiers générés)")
-    print("  6. Changer le chemin OneDrive")
-    print("  0. Quitter")
-    print()
-    return input("Votre choix: ").strip()
-
-
 def main():
     print()
     print("=" * 60)
     print("   AUTOMATISATION FICHIERS SUIVI KIABI")
     print("=" * 60)
 
+    # Vérifier si l'utilisateur veut changer le chemin (argument --config)
+    force_config = "--config" in sys.argv
+
     # Obtenir le chemin OneDrive AVANT d'importer les modules
-    onedrive_path = get_onedrive_path()
+    onedrive_path = get_onedrive_path(force_ask=force_config)
     os.environ["ONEDRIVE_BASE_PATH"] = onedrive_path
 
     print(f"\nDossier OneDrive: {onedrive_path}")
+    print("\n(Pour changer le chemin, relancez avec: Automatisation_SUIVI.exe --config)")
 
     # Ajouter le répertoire au path pour les imports
     sys.path.insert(0, str(BASE_DIR))
 
-    while True:
-        choice = show_menu()
+    # Recharger le module config pour prendre en compte le chemin
+    import importlib
+    import config
+    importlib.reload(config)
 
-        if choice == "1":
-            # Recharger le module config pour prendre en compte le chemin
-            import importlib
-            import config
-            importlib.reload(config)
-            from scripts.update_all import main as run_all
-            run_all()
+    # Lancer toutes les mises à jour
+    print("\n" + "=" * 60)
+    print("   LANCEMENT DES MISES A JOUR")
+    print("=" * 60)
 
-        elif choice == "2":
-            import importlib
-            import config
-            importlib.reload(config)
-            from scripts.update_crm import main as run_crm
-            run_crm()
+    results = {}
 
-        elif choice == "3":
-            import importlib
-            import config
-            importlib.reload(config)
-            from scripts.update_trafic import main as run_trafic
-            run_trafic()
+    # 1. KPIS, MDR, PMA, PRODUIT
+    print("\n>>> [1/3] Mise à jour KPIS, MDR, PMA, PRODUIT...")
+    try:
+        from scripts.update_all import main as run_all
+        results["KPIS/MDR/PMA/PRODUIT"] = run_all()
+    except Exception as e:
+        print(f"ERREUR: {e}")
+        results["KPIS/MDR/PMA/PRODUIT"] = False
 
-        elif choice == "4":
-            import importlib
-            import config
-            importlib.reload(config)
+    # 2. CRM
+    print("\n>>> [2/3] Mise à jour CRM...")
+    try:
+        from scripts.update_crm import main as run_crm
+        results["CRM"] = run_crm()
+    except Exception as e:
+        print(f"ERREUR: {e}")
+        results["CRM"] = False
 
-            print("\n>>> Mise à jour des 4 fichiers principaux...")
-            from scripts.update_all import main as run_all
-            run_all()
+    # 3. TRAFIC
+    print("\n>>> [3/3] Mise à jour TRAFIC...")
+    try:
+        from scripts.update_trafic import main as run_trafic
+        results["TRAFIC"] = run_trafic()
+    except Exception as e:
+        print(f"ERREUR: {e}")
+        results["TRAFIC"] = False
 
-            print("\n>>> Mise à jour CRM...")
-            from scripts.update_crm import main as run_crm
-            run_crm()
+    # Résumé final
+    print("\n" + "=" * 60)
+    print("   RÉSUMÉ FINAL")
+    print("=" * 60)
+    for name, success in results.items():
+        status = "OK" if success else "ERREUR"
+        print(f"  {name}: {status}")
 
-            print("\n>>> Mise à jour TRAFIC...")
-            from scripts.update_trafic import main as run_trafic
-            run_trafic()
+    all_ok = all(results.values())
+    if all_ok:
+        print("\n  Toutes les mises à jour ont été effectuées avec succès!")
+    else:
+        print("\n  Certaines mises à jour ont échoué. Vérifiez les messages ci-dessus.")
 
-        elif choice == "5":
-            import importlib
-            import config
-            importlib.reload(config)
-            from scripts.clean import main as run_clean
-            run_clean()
-
-        elif choice == "6":
-            CONFIG_FILE.unlink(missing_ok=True)
-            onedrive_path = get_onedrive_path()
-            os.environ["ONEDRIVE_BASE_PATH"] = onedrive_path
-            print(f"\nNouveau chemin: {onedrive_path}")
-
-        elif choice == "0":
-            print("\nAu revoir!")
-            break
-
-        else:
-            print("\nChoix invalide, réessayez.")
-
-        input("\nAppuyez sur Entrée pour continuer...")
+    print("\n" + "=" * 60)
+    input("\nAppuyez sur Entrée pour fermer...")
 
 
 if __name__ == "__main__":
