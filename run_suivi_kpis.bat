@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo    Mise a jour SUIVI_KPIS
+echo    Mise a jour de tous les SUIVIS
 echo ================================================
 echo.
 
@@ -13,7 +13,7 @@ if exist "venv\Scripts\activate.bat" (
 )
 
 REM Lancer le script Python
-python scripts\update_suivi_kpis.py
+python scripts\update_all.py
 
 REM Pause pour voir les messages
 pause
