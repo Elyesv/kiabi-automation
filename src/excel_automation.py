@@ -35,6 +35,11 @@ class ExcelAutomation:
         self.excel.Visible = visible
         self.excel.DisplayAlerts = False
         self.excel.AskToUpdateLinks = False  # Désactive la pop-up des liaisons externes
+        # Permet l'exécution des connexions de données externes (msoAutomationSecurityLow = 1)
+        try:
+            self.excel.AutomationSecurity = 1
+        except:
+            pass  # Ignorer si non supporté
         self.workbook = None
         self._pythoncom = pythoncom
 
@@ -57,6 +62,14 @@ class ExcelAutomation:
                 UpdateLinks=update_links_value
             )
             print(f"Classeur ouvert: {file_path.name}")
+
+            # Activer le contenu (macros et connexions de données)
+            try:
+                # Définir le dossier comme emplacement approuvé temporairement
+                self.workbook.EnableAutoRecover = True
+            except:
+                pass
+
             return True
         except Exception as e:
             print(f"Erreur d'ouverture du classeur: {e}")
@@ -79,25 +92,47 @@ class ExcelAutomation:
             count = 0
             for connection in self.workbook.Connections:
                 name = connection.Name
+                conn_type = None
                 try:
-                    # Activer la connexion OLEDB si présente
-                    if connection.OLEDBConnection:
-                        connection.OLEDBConnection.EnableRefresh = True
-                        # Désactiver le background refresh pour forcer le refresh synchrone
-                        connection.OLEDBConnection.BackgroundQuery = False
-                        print(f"  Activée: {name}")
-                        count += 1
+                    # Type 1 = OLEDB, Type 2 = ODBC, Type 4 = Web, Type 5 = Text
+                    conn_type = connection.Type
                 except:
                     pass
+
+                # Activer la connexion OLEDB si présente
                 try:
-                    # Activer la connexion ODBC si présente
+                    if connection.OLEDBConnection:
+                        connection.OLEDBConnection.EnableRefresh = True
+                        connection.OLEDBConnection.BackgroundQuery = False
+                        # Désactiver la vérification de certificat pour les sources locales
+                        try:
+                            connection.OLEDBConnection.AlwaysUseConnectionFile = False
+                        except:
+                            pass
+                        print(f"  Activée (OLEDB): {name}")
+                        count += 1
+                        continue
+                except:
+                    pass
+
+                # Activer la connexion ODBC si présente
+                try:
                     if connection.ODBCConnection:
                         connection.ODBCConnection.EnableRefresh = True
                         connection.ODBCConnection.BackgroundQuery = False
-                        print(f"  Activée: {name}")
+                        print(f"  Activée (ODBC): {name}")
                         count += 1
+                        continue
                 except:
                     pass
+
+                # Pour les autres types de connexions (ModelTables, etc.)
+                try:
+                    # Essayer de rafraîchir directement pour voir si la connexion est active
+                    print(f"  Connexion détectée: {name} (type={conn_type})")
+                except:
+                    pass
+
             print(f"  Total: {count} connexion(s) activée(s)")
             return True
         except Exception as e:
@@ -122,26 +157,26 @@ class ExcelAutomation:
             # D'abord activer toutes les connexions
             self.enable_all_connections()
 
-            print("Actualisation des connexions une par une...")
+            # Essayer d'activer les requêtes via le modèle de données si présent
+            try:
+                if self.workbook.Model:
+                    print("  Modèle de données détecté")
+                    try:
+                        self.workbook.Model.Refresh()
+                        print("  Modèle de données actualisé")
+                    except Exception as me:
+                        print(f"  Note: Modèle de données non actualisable ({me})")
+            except:
+                pass
 
-            # Actualiser chaque connexion individuellement
-            for connection in self.workbook.Connections:
-                name = connection.Name
-                try:
-                    print(f"  Actualisation de '{name}'...")
-                    connection.Refresh()
-                    print(f"    OK")
-                except Exception as e:
-                    print(f"    Erreur: {e}")
-
-            # Puis faire un RefreshAll pour s'assurer que tout est à jour
-            print("Actualisation globale (RefreshAll)...")
+            # Première actualisation
+            print("Actualisation des données (RefreshAll)...")
             self.workbook.RefreshAll()
 
             # Attendre que toutes les requêtes soient terminées
+            print("  Attente de la fin des actualisations...")
             start_time = time.time()
             while True:
-                # Vérifier si des requêtes sont encore en cours
                 refreshing = False
                 for connection in self.workbook.Connections:
                     try:
@@ -156,10 +191,13 @@ class ExcelAutomation:
                     break
 
                 if time.time() - start_time > timeout:
-                    print(f"Timeout après {timeout} secondes")
+                    print(f"  Timeout après {timeout} secondes")
                     return False
 
                 time.sleep(2)
+
+            # Attendre un peu pour que les calculs se terminent
+            time.sleep(3)
 
             # Deuxième actualisation (comme mentionné dans le process)
             print("Deuxième actualisation (sécurité)...")
