@@ -37,7 +37,6 @@ def find_latest_file(folder: Path, prefix: str, ext: str = ".xlsx"):
         print(f"  ERREUR: Aucun fichier trouvé pour '{pattern}' dans {folder}")
         return None, None
 
-    # Extraire le numéro de semaine de chaque fichier et prendre le plus élevé
     best_file = None
     best_week = -1
     for f in matches:
@@ -58,7 +57,7 @@ def find_latest_file(folder: Path, prefix: str, ext: str = ".xlsx"):
     return best_file, best_week
 
 
-def process_file(name: str, config: dict) -> bool:
+def process_file(name: str, config: dict, excel: ExcelAutomation) -> bool:
     """
     Traite un fichier : duplication, mise à jour date, actualisation données.
 
@@ -97,10 +96,8 @@ def process_file(name: str, config: dict) -> bool:
     shutil.copy2(source_file, new_file)
 
     # 3. Ouvrir et mettre à jour la date
-    excel = None
     try:
         print(f"\n  [3/5] Mise à jour de la date dans {config['date_sheet']}!{config['date_cell']}...")
-        excel = ExcelAutomation(visible=True)
 
         if not excel.open_workbook(new_file):
             print("  ERREUR: Impossible d'ouvrir le fichier")
@@ -137,8 +134,8 @@ def process_file(name: str, config: dict) -> bool:
         print("  Vérification des connexions...")
         excel.check_connections_status()
 
-        # 5. Sauvegarder et fermer
-        print(f"\n  [5/5] Sauvegarde et fermeture...")
+        # 5. Sauvegarder et fermer le classeur (pas Excel)
+        print(f"\n  [5/5] Sauvegarde et fermeture du classeur...")
         if not excel.save():
             print("  ERREUR: Impossible de sauvegarder")
             return False
@@ -151,14 +148,12 @@ def process_file(name: str, config: dict) -> bool:
         print(f"  ERREUR INATTENDUE: {e}")
         import traceback
         traceback.print_exc()
+        # Fermer le classeur en cas d'erreur pour pouvoir continuer
+        try:
+            excel.close(save=False)
+        except:
+            pass
         return False
-
-    finally:
-        if excel:
-            try:
-                excel.quit()
-            except:
-                pass
 
 
 def main():
@@ -176,9 +171,25 @@ def main():
 
     print(f"\nFichiers à traiter: {len(FILE_CONFIGS)}")
 
-    results = {}
-    for name, config in FILE_CONFIGS.items():
-        results[name] = process_file(name, config)
+    # Une seule instance Excel pour tous les fichiers
+    excel = None
+    try:
+        excel = ExcelAutomation(visible=True)
+
+        results = {}
+        for name, config in FILE_CONFIGS.items():
+            results[name] = process_file(name, config, excel)
+
+    except Exception as e:
+        print(f"\nERREUR lors de l'initialisation d'Excel: {e}")
+        return False
+
+    finally:
+        if excel:
+            try:
+                excel.quit()
+            except:
+                pass
 
     # Résumé
     print("\n" + "=" * 60)
