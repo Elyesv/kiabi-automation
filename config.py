@@ -16,7 +16,12 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
 # Chemin racine OneDrive (dossier contenant les sous-dossiers de fichiers)
-ONEDRIVE_BASE_PATH = Path(os.getenv("ONEDRIVE_BASE_PATH", ""))
+def get_onedrive_path():
+    """Retourne le chemin OneDrive configuré."""
+    return Path(os.getenv("ONEDRIVE_BASE_PATH", ""))
+
+# Pour compatibilité avec le code existant
+ONEDRIVE_BASE_PATH = get_onedrive_path()
 
 # Configurations par fichier
 SUIVI_KPIS_CONFIG = {
