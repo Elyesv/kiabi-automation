@@ -69,6 +69,9 @@ SUIVI_CRM_CONFIG = {
         # Requêtes selligent : mettre à jour le numéro de semaine dans le chemin
         "selligent_all": {"type": "selligent"},
         "selligent_all_histo": {"type": "selligent"},
+        # Requêtes push : mettre à jour le numéro de semaine dans le chemin
+        "push_all": {"type": "selligent"},
+        "push_all_histo": {"type": "selligent"},
         # Requêtes piano : mettre à jour les dates start/end (+7 jours)
         "piano_all": {"type": "piano"},
         "piano_all_histo": {"type": "piano"},
