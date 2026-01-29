@@ -61,6 +61,8 @@ SUIVI_PRODUIT_CONFIG = {
 SUIVI_CRM_CONFIG = {
     "folder": "SUIVI_CRM",
     "file_prefix": "SUIVI_CRM",
+    "date_sheet": "REPORT",
+    "date_cell": "A1",
     "timeout_refresh": 300,
     # Requêtes Power Query à mettre à jour
     "queries": {

@@ -151,7 +151,34 @@ def main():
             print("ERREUR: Impossible d'ouvrir le fichier")
             return False
 
-        print(f"\n[3/5] Mise à jour des requêtes Power Query...")
+        # 3. Mise à jour de la date
+        print(f"\n[3/6] Mise à jour de la date...")
+        sheet = config.get("date_sheet")
+        cell = config.get("date_cell")
+
+        if sheet and cell:
+            current_date = excel.read_cell(sheet, cell)
+
+            if current_date is not None:
+                if isinstance(current_date, datetime):
+                    new_date = current_date + timedelta(days=7)
+                else:
+                    try:
+                        current_date = datetime.strptime(str(current_date), "%Y-%m-%d %H:%M:%S")
+                        new_date = current_date + timedelta(days=7)
+                    except ValueError:
+                        print(f"  ERREUR: '{current_date}' n'est pas une date valide")
+                        new_date = None
+
+                if new_date:
+                    print(f"  {current_date.strftime('%d/%m/%Y')} -> {new_date.strftime('%d/%m/%Y')}")
+                    excel.write_cell(sheet, cell, new_date)
+            else:
+                print("  ATTENTION: Impossible de lire la date")
+        else:
+            print("  Pas de date à mettre à jour")
+
+        print(f"\n[4/6] Mise à jour des requêtes Power Query...")
         queries = config.get("queries", {})
 
         for query_name, query_config in queries.items():
@@ -163,16 +190,16 @@ def main():
             elif query_type == "piano":
                 update_piano_query(excel, query_name)
 
-        # 4. Actualiser les données
-        print(f"\n[4/5] Actualisation des données...")
+        # 5. Actualiser les données
+        print(f"\n[5/6] Actualisation des données...")
         if not excel.refresh_all_queries(timeout=config["timeout_refresh"]):
             print("ATTENTION: L'actualisation peut ne pas être complète")
 
         print("  Vérification des connexions...")
         excel.check_connections_status()
 
-        # 5. Sauvegarder et fermer
-        print(f"\n[5/5] Sauvegarde et fermeture...")
+        # 6. Sauvegarder et fermer
+        print(f"\n[6/6] Sauvegarde et fermeture...")
         if not excel.save():
             print("ERREUR: Impossible de sauvegarder")
             return False
