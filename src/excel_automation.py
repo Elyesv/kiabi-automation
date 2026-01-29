@@ -40,6 +40,12 @@ class ExcelAutomation:
             self.excel.AutomationSecurity = 1
         except:
             pass  # Ignorer si non supporté
+        # Désactiver la validation de format de fichier (popup "format et extension ne correspondent pas")
+        try:
+            # msoFileValidationSkip = 2
+            self.excel.FileValidation = 2
+        except:
+            pass
         self.workbook = None
         self._pythoncom = pythoncom
 
