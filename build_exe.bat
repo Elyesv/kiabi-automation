@@ -8,7 +8,7 @@ REM Verifier que PyInstaller est installe
 pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo Installation de PyInstaller...
-    pip install pyinstaller
+    pip install --user pyinstaller
 )
 
 REM Creer l'executable
