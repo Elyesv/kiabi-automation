@@ -16,10 +16,10 @@ echo.
 echo Creation de l'executable...
 pyinstaller --onedir --name "Automatisation_SUIVI" --console ^
     --hidden-import=scripts.update_kpis ^
-    --hidden-import=scripts.update_autres ^
+    --hidden-import=scripts.update_mdr ^
+    --hidden-import=scripts.update_pma ^
+    --hidden-import=scripts.update_produit ^
     --hidden-import=scripts.update_crm ^
-    --hidden-import=scripts.update_trafic ^
-    --hidden-import=scripts.clean ^
     --hidden-import=config ^
     --hidden-import=src.excel_automation ^
     --add-data "config.py;." ^

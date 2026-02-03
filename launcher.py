@@ -67,8 +67,8 @@ def main():
 
     results = {}
 
-    # 1. KPIS seul
-    print("\n>>> [1/4] Mise à jour SUIVI_KPIS...")
+    # 1. KPIS
+    print("\n>>> [1/5] Mise a jour SUIVI_KPIS...")
     try:
         from scripts.update_kpis import main as run_kpis
         results["KPIS"] = run_kpis()
@@ -76,32 +76,41 @@ def main():
         print(f"ERREUR: {e}")
         results["KPIS"] = False
 
-    # 2. MDR, PMA, PRODUIT
-    print("\n>>> [2/4] Mise à jour MDR, PMA, PRODUIT...")
+    # 2. MDR
+    print("\n>>> [2/5] Mise a jour SUIVI_MDR...")
     try:
-        from scripts.update_autres import main as run_autres
-        results["MDR/PMA/PRODUIT"] = run_autres()
+        from scripts.update_mdr import main as run_mdr
+        results["MDR"] = run_mdr()
     except Exception as e:
         print(f"ERREUR: {e}")
-        results["MDR/PMA/PRODUIT"] = False
+        results["MDR"] = False
 
-    # 3. CRM
-    print("\n>>> [3/4] Mise à jour CRM...")
+    # 3. PMA
+    print("\n>>> [3/5] Mise a jour SUIVI_PMA...")
+    try:
+        from scripts.update_pma import main as run_pma
+        results["PMA"] = run_pma()
+    except Exception as e:
+        print(f"ERREUR: {e}")
+        results["PMA"] = False
+
+    # 4. PRODUIT
+    print("\n>>> [4/5] Mise a jour SUIVI_PRODUIT...")
+    try:
+        from scripts.update_produit import main as run_produit
+        results["PRODUIT"] = run_produit()
+    except Exception as e:
+        print(f"ERREUR: {e}")
+        results["PRODUIT"] = False
+
+    # 5. CRM
+    print("\n>>> [5/5] Mise a jour SUIVI_CRM...")
     try:
         from scripts.update_crm import main as run_crm
         results["CRM"] = run_crm()
     except Exception as e:
         print(f"ERREUR: {e}")
         results["CRM"] = False
-
-    # 4. TRAFIC
-    print("\n>>> [4/4] Mise à jour TRAFIC...")
-    try:
-        from scripts.update_trafic import main as run_trafic
-        results["TRAFIC"] = run_trafic()
-    except Exception as e:
-        print(f"ERREUR: {e}")
-        results["TRAFIC"] = False
 
     # Résumé final
     print("\n" + "=" * 60)
