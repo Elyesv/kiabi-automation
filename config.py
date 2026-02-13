@@ -3,10 +3,11 @@ Configuration pour l'automatisation des fichiers Excel OneDrive.
 """
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Charger les variables d'environnement
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Répertoire racine du projet
 PROJECT_ROOT = Path(__file__).parent
