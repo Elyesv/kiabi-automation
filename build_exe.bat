@@ -22,6 +22,10 @@ python -m PyInstaller --onedir --name "Automatisation_SUIVI" --console ^
     --hidden-import=scripts.update_crm ^
     --hidden-import=config ^
     --hidden-import=dotenv ^
+    --hidden-import=win32com ^
+    --hidden-import=win32com.client ^
+    --hidden-import=pythoncom ^
+    --hidden-import=pywintypes ^
     --hidden-import=src.excel_automation ^
     --add-data "config.py;." ^
     --add-data "scripts;scripts" ^
