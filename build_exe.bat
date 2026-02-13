@@ -21,6 +21,7 @@ pyinstaller --onedir --name "Automatisation_SUIVI" --console ^
     --hidden-import=scripts.update_produit ^
     --hidden-import=scripts.update_crm ^
     --hidden-import=config ^
+    --hidden-import=dotenv ^
     --hidden-import=src.excel_automation ^
     --add-data "config.py;." ^
     --add-data "scripts;scripts" ^
