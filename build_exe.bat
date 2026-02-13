@@ -5,16 +5,16 @@ echo ================================================
 echo.
 
 REM Verifier que PyInstaller est installe
-pip show pyinstaller >nul 2>&1
+python -m PyInstaller --version >nul 2>&1
 if errorlevel 1 (
     echo Installation de PyInstaller...
-    pip install --user pyinstaller
+    pip install pyinstaller
 )
 
 REM Creer l'executable
 echo.
 echo Creation de l'executable...
-pyinstaller --onedir --name "Automatisation_SUIVI" --console ^
+python -m PyInstaller --onedir --name "Automatisation_SUIVI" --console ^
     --hidden-import=scripts.update_kpis ^
     --hidden-import=scripts.update_mdr ^
     --hidden-import=scripts.update_pma ^
