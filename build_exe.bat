@@ -4,12 +4,10 @@ echo    Build de l'executable
 echo ================================================
 echo.
 
-REM Verifier que PyInstaller est installe
-python -m PyInstaller --version >nul 2>&1
-if errorlevel 1 (
-    echo Installation de PyInstaller...
-    pip install pyinstaller
-)
+REM Installer les dependances
+echo Installation des dependances...
+pip install -r requirements.txt
+pip install pyinstaller
 
 REM Creer l'executable
 echo.
